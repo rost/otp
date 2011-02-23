@@ -2249,8 +2249,7 @@ linux_workaround_transport_delivery_problems(#alert{level = ?FATAL}, Socket) ->
 linux_workaround_transport_delivery_problems(_, _) ->
     ok.
 
-get_timeout(#state{ ssl_options=SslOptions }) ->
-    case SslOptions#ssl_options.hibernate_after of
-        undefined -> infinity;
-        Value -> Value
-    end.
+get_timeout(#state{ssl_options=#ssl_options{hibernate_after=undefined}}) ->
+    infinity;
+get_timeout(#state{ssl_options=#ssl_options{hibernate_after=HibernateAfter}}) ->
+    HibernateAfter.
