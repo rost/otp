@@ -483,6 +483,33 @@ function.")
   "*Non-nil means TAB in Erlang mode should always re-indent the current line,
 regardless of where in the line point is when the TAB command is used.")
 
+;; (defvar erlang-list-comma-indent-alignment 'standard
+;;   "*Indentation alignment of commas within lists, tuples and
+;;   lists of arguments. Defaults to 'standard. 'bracket aligns
+;; with bracket '([{'.")
+
+;; (defvar erlang-guard-semicolon-indent-alignment 'standard
+;;   "*Indentation alignment of semicolons in guards. Defaults to
+;; 'standard. 'guard to align with guard keyword.")
+
+(defvar erlang-when-semicolon-indent-offset 4
+  "")
+
+(defvar erlang-comma-indent-offset 1
+  "")
+
+(setq erlang-when-semicolon-indent-offset 3)
+(setq erlang-comma-indent-offset 0)
+
+;; (defvar erlang-list-comma-indent-stack-top 1 ;; 2
+;;   "*Indicates what element in the expression the alignment should follow.
+;; 1 typically means the first element of the list/tuple/arguments. 2 typically
+;; means the token before that, i.e. the bracket.")
+
+;; (defun erlang-indent-init ()
+;;   (if (and erlang-alternative-indent (erlang-indent-configuration))
+;;       ))
+
 (defvar erlang-error-regexp-alist
   '(("^\\([^:( \t\n]+\\)[:(][ \t]*\\([0-9]+\\)[:) \t]" . (1 2)))
   "*Patterns for matching Erlang errors.")
@@ -2742,11 +2769,18 @@ Return nil if inside string, t if in a comment."
 		  (let ((base (cond ((looking-at "[({]\\s *\\($\\|%\\)")
 				     ;; Line ends with parenthesis.
 				     (erlang-indent-parenthesis (nth 2 stack-top)))
+                                    ((looking-at "[({\\[].*,$")
+                                     (goto-char (+ 1
+                                                   (nth 1 stack-top)))
+                                     (skip-chars-forward " \t")
+                                     (current-column))
 				    (t
 				     ;; Indent to the same column as the first
 				     ;; argument.
-				     (goto-char (1+ (nth 1 stack-top)))
-				     (skip-chars-forward " \t")
+				     ;; (goto-char (1+ (nth 1 stack-top)))
+                                     (goto-char (+ erlang-comma-indent-offset
+                                                   (nth 1 stack-top)))
+                                     (skip-chars-forward " \t")
 				     (current-column)))))
 		    (erlang-indent-standard indent-point token base 't)))))
 	  ;;
@@ -2842,27 +2876,35 @@ Return nil if inside string, t if in a comment."
 	     ))
 	  ((eq (car stack-top) 'when)
 	   (goto-char (nth 1 stack-top))
-	   (if (looking-at "when\\s *\\($\\|%\\)")
-	       (progn
-		 (erlang-pop stack)
-		 (if (and stack (memq (nth 0 (car stack)) '(icr fun)))
-		     (progn
-		       (goto-char (nth 1 (car stack)))
-		       (+ (nth 2 (car stack)) erlang-indent-guard
-			  ;; receive XYZ    or    receive
-			  ;;                          XYZ
-			  ;; This if thing does not seem to be needed
-			  ;;(if (looking-at "[a-z]+\\s *\\($\\|%\\)")
-			  ;;    erlang-indent-level
-			  ;;  (* 2 erlang-indent-level))))
-			  (* 2 erlang-indent-level)))
-			  ;;erlang-indent-level))
-		   (+ erlang-indent-level erlang-indent-guard)))
-             ;; "when" is followed by code, let's indent to the same
-             ;; column.
-             (forward-char 4)           ; Skip "when"
-             (skip-chars-forward " \t")
-             (current-column)))
+           (cond ((looking-at "when\\s *\\($\\|%\\)")
+                  (progn
+                    (erlang-pop stack)
+                    (if (and stack (memq (nth 0 (car stack)) '(icr fun)))
+                        (progn
+                          (goto-char (nth 1 (car stack)))
+                          (+ (nth 2 (car stack)) erlang-indent-guard
+                             ;; receive XYZ    or    receive
+                             ;;                          XYZ
+                             ;; This if thing does not seem to be needed
+                             ;;(if (looking-at "[a-z]+\\s *\\($\\|%\\)")
+                             ;;    erlang-indent-level
+                             ;;  (* 2 erlang-indent-level))))
+                             (* 2 erlang-indent-level)))
+                      ;;erlang-indent-level))
+                      (+ erlang-indent-level erlang-indent-guard))))
+                 ((looking-at "when\\s *.*;$")
+                  (forward-char 4)
+                  (skip-chars-forward " \t")
+                  (current-column))
+                 (t
+
+                  ;; ;; "when" is followed by code, let's indent to the same
+                  ;; ;; column.
+                  ;; (forward-char 4)           ; Skip "when"
+
+                  (forward-char erlang-when-semicolon-indent-offset)
+                  (skip-chars-forward " \t")
+                  (current-column))))
 	  ;; Type and Spec indentation
 	  ((eq (car stack-top) '::)
 	   (if (looking-at "}")
@@ -2888,7 +2930,9 @@ Return nil if inside string, t if in a comment."
 			       (t
 				;; Indent to the same column as the first
 				;; argument.
-				(goto-char (+ 2 (nth 1 stack-top)))
+				;; (goto-char (+ 2 (nth 1 stack-top)))
+                                (goto-char
+                                 (+ 1 (erlang-indent-find-preceding-expr 1)))
 				(skip-chars-forward " \t")
 				(current-column))) start-alternativ))))))
 	  )))
