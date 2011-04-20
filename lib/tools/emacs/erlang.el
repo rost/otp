@@ -1119,7 +1119,7 @@ are highlighted by syntactic analysis.")
    (list (concat "^\\(-\\(?:define\\|ifn?def\\)\\)\\s-*(\\s-*\\("
                  erlang-atom-regexp "\\|" erlang-variable-regexp "\\)")
          (list 1 'erl-attr-face t)
-	 (list 3 'erl-macro-face t t))
+	 (list 2 'erl-macro-face t t))
    (list "^-e\\(lse\\|ndif\\)\\>"
          0 'erl-attr-face t))
   "Font lock keyword highlighting macros.
