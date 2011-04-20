@@ -1046,7 +1046,8 @@ behaviour.")
 
 (defvar erlang-font-lock-keywords-arrow
   (list
-   (list "->\\(\\s \\|$\\)" 1 'font-lock-function-name-face))
+   (list "\\(->\\)\\(\\s \\|$\\)" 
+         1 'font-lock-function-name-face))
   "Font lock keyword highlighting clause arrow.")
 
 (defvar erlang-font-lock-keywords-lc
