@@ -1162,48 +1162,57 @@ variable must be set before Erlang mode is activated.
 Example:
     (setq font-lock-maximum-decoration 2)")
 
+;; the keyword regexps has to appear in the correct (this) order for
+;; font locking to work. Regardless of which font lock level one
+;; wants.
+
+(defvar erlang-font-lock-kwords
+  '((1 . erlang-font-lock-keywords-function-header)
+    (1 . erlang-font-lock-keywords-arrow)
+    (1 . erlang-font-lock-keywords-keywords)
+    (2 . erlang-font-lock-keywords-attr)
+    (3 . erlang-font-lock-keywords-macros)
+    (3 . erlang-font-lock-keywords-records)
+    (2 . erlang-font-lock-keywords-ext-bifs)
+    (4 . erlang-font-lock-keywords-ext-function-calls)
+    (2 . erlang-font-lock-keywords-int-bifs)
+    (4 . erlang-font-lock-keywords-int-function-calls)
+    (2 . erlang-font-lock-keywords-guards)
+    (3 . erlang-font-lock-keywords-operators)
+    (3 . erlang-font-lock-keywords-predefined-types)
+    (4 . erlang-font-lock-keywords-fun-n)
+    (1 . erlang-font-lock-keywords-dollar)
+    (2 . erlang-font-lock-keywords-quotes)
+    (3 . erlang-font-lock-keywords-vars)
+    (4 . erlang-font-lock-keywords-lc)))
+
+(defun level-filter (n lst)
+  (apply 'append
+   (delq nil
+         (mapcar (lambda (x) (and (<= (car x) n) (eval (cdr x)))) lst))))
+
 (defvar erlang-font-lock-keywords-1
-  (append erlang-font-lock-keywords-function-header
-	  erlang-font-lock-keywords-dollar
-	  erlang-font-lock-keywords-arrow
-	  erlang-font-lock-keywords-keywords
-	  )
+  (level-filter 1 erlang-font-lock-kwords)
   ;; DocStringOrig: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
 (defvar erlang-font-lock-keywords-2
-  (append erlang-font-lock-keywords-1
-	  erlang-font-lock-keywords-int-bifs
-	  erlang-font-lock-keywords-ext-bifs
-	  erlang-font-lock-keywords-attr
-	  erlang-font-lock-keywords-quotes
-	  erlang-font-lock-keywords-guards
-	  )
+  (level-filter 2 erlang-font-lock-kwords)
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
 (defvar erlang-font-lock-keywords-3
-  (append erlang-font-lock-keywords-2
-	  erlang-font-lock-keywords-operators
-	  erlang-font-lock-keywords-macros
-	  erlang-font-lock-keywords-records
-	  erlang-font-lock-keywords-vars
-	  erlang-font-lock-keywords-predefined-types
-	  )
+  (level-filter 3 erlang-font-lock-kwords)
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
 (defvar erlang-font-lock-keywords-4
-  (append erlang-font-lock-keywords-3
-          erlang-font-lock-keywords-int-function-calls
-	  erlang-font-lock-keywords-ext-function-calls
-	  erlang-font-lock-keywords-fun-n
-          erlang-font-lock-keywords-lc
-	  )
+  (level-filter 4 erlang-font-lock-kwords)
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
-(defvar erlang-font-lock-keywords erlang-font-lock-keywords-4
+(defvar erlang-font-lock-keywords
+  erlang-font-lock-keywords-4
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
