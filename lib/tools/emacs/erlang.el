@@ -995,6 +995,9 @@ behaviour.")
 ;; Note that Erlang strings and atoms are highlighted with using
 ;; syntactic analysis.
 
+(defvar erl-atom-face               'default)
+(defvar erl-comment-face            'font-lock-comment-face)
+(defvar erl-string-face             'font-lock-string-face)
 (defvar erl-function-header-face    'font-lock-function-name-face)
 (defvar erl-arrow-face              'font-lock-function-name-face)
 (defvar erl-int-bif-face            'font-lock-builtin-face)
@@ -1053,6 +1056,12 @@ behaviour.")
          1 'erl-fun-n-face))
   "Font lock keyword highlighting a fun descriptor in F/N format.")
 
+(defvar erlang-font-lock-keywords-atom
+  (list
+   (list (concat "\\(" erlang-atom-regexp "\\)")
+         1 'erl-atom-face))
+  "Font lock keyword highlighting an atom.")
+
 (defvar erlang-font-lock-keywords-operators
   (list
    (list erlang-operators-regexp
@@ -1100,7 +1109,7 @@ are highlighted by syntactic analysis.")
 
 (defvar erlang-font-lock-keywords-guards
   (list
-   (list (concat "[^:]" erlang-guards-regexp "\\s-*(")
+   (list (concat erlang-guards-regexp "\\s-*(")
 	 1 'erl-guard-face))
   "Font lock keyword highlighting guards.")
 
@@ -1182,6 +1191,7 @@ Example:
     (3 . erlang-font-lock-keywords-predefined-types)
     (4 . erlang-font-lock-keywords-fun-n)
     (1 . erlang-font-lock-keywords-dollar)
+    (1 . erlang-font-lock-keywords-atom)
     (2 . erlang-font-lock-keywords-quotes)
     (3 . erlang-font-lock-keywords-vars)
     (4 . erlang-font-lock-keywords-lc)))
@@ -1559,6 +1569,20 @@ Other commands:
              ("\\(\\$\\)\\\\\\\"" 1 "'"))))))
 
 
+;; use syntactic font locking for comments, strings and single-quoted atoms.
+;; we use this function to check which context we're in. and set the
+;; face accordingly
+(setq font-lock-syntactic-face-function
+      'erlang-font-lock-syntactic-face-function)
+
+(defun erlang-font-lock-syntactic-face-function (state)
+  (cond
+   ((not (nth 3 state))   ; comment
+    erl-comment-face)
+   ((= (nth 3 state) 34)  ; double quoted string
+    erl-string-face)
+   ((= (nth 3 state) 39)  ; single quoted "string", i.e. atom
+    erl-atom-face)))
 
 ;; Useful when defining your own keywords.
 (defun erlang-font-lock-set-face (ks &rest faces)
