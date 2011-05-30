@@ -1,7 +1,7 @@
 ;; erlang.el --- Major modes for editing and running Erlang
 ;; %CopyrightBegin%
 ;;
-;; Copyright Ericsson AB 1996-2010. All Rights Reserved.
+;; Copyright Ericsson AB 1996-2011. All Rights Reserved.
 ;;
 ;; The contents of this file are subject to the Erlang Public License,
 ;; Version 1.1, (the "License"); you may not use this file except in
@@ -466,14 +466,17 @@ To activate the workaround, place the following in your `~/.emacs' file:
 
 (defvar erlang-indent-level 4
   "*Indentation of Erlang calls/clauses within blocks.")
+(put 'erlang-indent-level 'safe-local-variable 'integerp)
 
 (defvar erlang-indent-guard 2
   "*Indentation of Erlang guards.")
+(put 'erlang-indent-guard 'safe-local-variable 'integerp)
 
 (defvar erlang-argument-indent 2
   "*Indentation of the first argument in a function call.
 When nil, indent to the column after the `(' of the
 function.")
+(put 'erlang-argument-indent 'safe-local-variable '(lambda (val) (or (null val) (integerp val))))
 
 (defvar erlang-tab-always-indent t
   "*Non-nil means TAB in Erlang mode should always re-indent the current line,
@@ -625,7 +628,8 @@ resulting regexp is surrounded by \\_< and \\_>."
     "Erlang reserved keywords"))
 
 (eval-and-compile
-  (defconst erlang-keywords-regexp (erlang-regexp-opt erlang-keywords 'symbols)))
+  (defconst erlang-keywords-regexp
+    (erlang-regexp-opt erlang-keywords 'symbols)))
   
 (eval-and-compile
   (defvar erlang-operators
@@ -648,7 +652,8 @@ resulting regexp is surrounded by \\_< and \\_>."
 ;; '+' '-' '*' '/' '>', '>=', '<', '=<', '=:=', '==', '=/=', '/='
 
 (eval-and-compile
-  (defconst erlang-operators-regexp (erlang-regexp-opt erlang-operators 'symbols)))
+  (defconst erlang-operators-regexp
+    (erlang-regexp-opt erlang-operators 'symbols)))
   
 
 (eval-and-compile
@@ -989,86 +994,113 @@ behaviour.")
 ;; Note that Erlang strings and atoms are highlighted with using
 ;; syntactic analysis.
 
+(defvar erl-atom-face               'default)
+(defvar erl-comment-face            'font-lock-comment-face)
+(defvar erl-string-face             'font-lock-string-face)
+(defvar erl-function-header-face    'font-lock-function-name-face)
+(defvar erl-arrow-face              'font-lock-function-name-face)
+(defvar erl-int-bif-face            'font-lock-builtin-face)
+(defvar erl-ext-bif-face            'font-lock-builtin-face)
+(defvar erl-operator-face           'font-lock-builtin-face)
+(defvar erl-guard-face              'font-lock-builtin-face)
+(defvar erl-predefined-type-face    'font-lock-builtin-face)
+(defvar erl-int-function-call-face  'font-lock-type-face)
+(defvar erl-ext-function-call-face  'font-lock-type-face)
+(defvar erl-fun-n-face              'font-lock-type-face)
+(defvar erl-record-face             'font-lock-type-face)
+(defvar erl-macro-face              'font-lock-constant-face)
+(defvar erl-dollar-face             'font-lock-constant-face)
+(defvar erl-lc-face                 'font-lock-keyword-face)
+(defvar erl-keyword-face            'font-lock-keyword-face)
+(defvar erl-quotes-face             'font-lock-keyword-face)
+(defvar erl-attr-face               'font-lock-preprocessor-face)
+(defvar erl-var-face                'font-lock-variable-name-face)
+
 (defvar erlang-font-lock-keywords-function-header
   (list
    (list (concat "^" erlang-atom-regexp "\\s-*(")
-	 1 'font-lock-function-name-face t))
+	 1 'erl-function-header-face t))
   "Font lock keyword highlighting a function header.")
 
 (defvar erlang-font-lock-keywords-int-bifs
   (list
    (list (concat erlang-int-bif-regexp "\\s-*(")
-         1 'font-lock-builtin-face))
+         1 'erl-int-bif-face))
   "Font lock keyword highlighting built in functions.")
 
 (defvar erlang-font-lock-keywords-ext-bifs
   (list
    (list (concat "\\<\\(erlang\\)\\s-*:\\s-*" erlang-ext-bif-regexp "\\s-*(")
-	 '(1 'font-lock-builtin-face)
-	 '(2 'font-lock-builtin-face)))
+	 '(1 erl-ext-bif-face)
+	 '(2 erl-ext-bif-face)))
   "Font lock keyword highlighting built in functions.")
 
 (defvar erlang-font-lock-keywords-int-function-calls
   (list
    (list (concat erlang-atom-regexp "\\s-*(")
-         1 'font-lock-type-face))
+         1 'erl-int-function-call-face))
   "Font lock keyword highlighting an internal function call.")
 
 (defvar erlang-font-lock-keywords-ext-function-calls
   (list
    (list (concat erlang-atom-regexp "\\s-*:\\s-*"
                  erlang-atom-regexp "\\s-*(")
-         '(1 'font-lock-type-face)
-	 '(2 'font-lock-type-face)))
+         '(1 erl-ext-function-call-face)
+	 '(2 erl-ext-function-call-face)))
   "Font lock keyword highlighting an external function call.")
 
 (defvar erlang-font-lock-keywords-fun-n
   (list
    (list (concat "\\(" erlang-atom-regexp "/[0-9]+\\)")
-         1 'font-lock-type-face))
+         1 'erl-fun-n-face))
   "Font lock keyword highlighting a fun descriptor in F/N format.")
+
+(defvar erlang-font-lock-keywords-atom
+  (list
+   (list (concat "\\(" erlang-atom-regexp "\\)")
+         1 'erl-atom-face))
+  "Font lock keyword highlighting an atom.")
 
 (defvar erlang-font-lock-keywords-operators
   (list
    (list erlang-operators-regexp
-         1 'font-lock-builtin-face))
+         1 'erl-operator-face))
   "Font lock keyword highlighting Erlang operators.")
 
 (defvar erlang-font-lock-keywords-dollar
   (list
    (list "\\(\\$\\([^\\]\\|\\\\\\([^0-7^\n]\\|[0-7]+\\|\\^[a-zA-Z]\\)\\)\\)"
-	 1 'font-lock-constant-face))
+	 1 'erl-dollar-face))
   "Font lock keyword highlighting numbers in ASCII form (e.g. $A).")
 
 (defvar erlang-font-lock-keywords-arrow
   (list
-   (list "->\\(\\s \\|$\\)" 1 'font-lock-function-name-face))
+   (list "\\(->\\)\\(\\s \\|$\\)"
+         1 'erl-arrow-face))
   "Font lock keyword highlighting clause arrow.")
 
 (defvar erlang-font-lock-keywords-lc
   (list
-   (list "\\(<-\\|<=\\|||\\)\\(\\s \\|$\\)" 1 'font-lock-keyword-face))
+   (list "\\(<-\\|<=\\|||\\)\\(\\s \\|$\\)"
+         1 'erl-lc-face))
   "Font lock keyword highlighting list comprehension operators.")
 
 (defvar erlang-font-lock-keywords-keywords
   (list
-   (list erlang-keywords-regexp 1 'font-lock-keyword-face))
+   (list erlang-keywords-regexp
+         1 'erl-keyword-face))
   "Font lock keyword highlighting Erlang keywords.")
 
 (defvar erlang-font-lock-keywords-attr
   (list
    (list (concat "^\\(-" erlang-atom-regexp "\\)\\(\\s-\\|\\.\\|(\\)")	 
-	 1 (if (boundp 'font-lock-preprocessor-face)
-	       'font-lock-preprocessor-face
-	     'font-lock-constant-face)))
+	 1 'erl-attr-face))
   "Font lock keyword highlighting attributes.")
 
 (defvar erlang-font-lock-keywords-quotes
   (list
    (list "`\\([-+a-zA-Z0-9_:*][-+a-zA-Z0-9_:*]+\\)'"
-	 1
-	 'font-lock-keyword-face
-	 t))
+	 1 'erl-quotes-face t))
   "Font lock keyword highlighting words in single quotes in comments.
 
 This is not the highlighting of Erlang strings and atoms, which
@@ -1076,14 +1108,14 @@ are highlighted by syntactic analysis.")
 
 (defvar erlang-font-lock-keywords-guards
   (list
-   (list (concat "[^:]" erlang-guards-regexp "\\s-*(")
-	 1 'font-lock-builtin-face))
+   (list (concat erlang-guards-regexp "\\s-*(")
+	 1 'erl-guard-face))
   "Font lock keyword highlighting guards.")
 
 (defvar erlang-font-lock-keywords-predefined-types
   (list
    (list (concat "[^:]" erlang-predefined-types-regexp "\\s-*(")
-	 1 'font-lock-builtin-face))
+	 1 'erl-predefined-type-face))
   "Font lock keyword highlighting predefined types.")
 
 
@@ -1091,35 +1123,34 @@ are highlighted by syntactic analysis.")
   (list
    (list (concat "?\\s-*\\(" erlang-atom-regexp
 		 "\\|" erlang-variable-regexp "\\)")
-	 1 'font-lock-constant-face)
-   (list (concat "^\\(-\\(?:define\\|ifn?def\\)\\)\\s-*(\\s-*\\(" erlang-atom-regexp
-		 "\\|" erlang-variable-regexp "\\)")
-	 (if (boundp 'font-lock-preprocessor-face)
-	     (list 1 'font-lock-preprocessor-face t)
-	   (list 1 'font-lock-constant-face t))
-	 (list 3 'font-lock-type-face t t))
-   (list "^-e\\(lse\\|ndif\\)\\>" 0 'font-lock-preprocessor-face t))
+	 1 'erl-macro-face)
+   (list (concat "^\\(-\\(?:define\\|ifn?def\\)\\)\\s-*(\\s-*\\("
+                 erlang-atom-regexp "\\|" erlang-variable-regexp "\\)")
+         (list 1 'erl-attr-face t)
+	 (list 2 'erl-macro-face t t))
+   (list "^-e\\(lse\\|ndif\\)\\>"
+         0 'erl-attr-face t))
   "Font lock keyword highlighting macros.
 This must be placed in front of `erlang-font-lock-keywords-vars'.")
 
 (defvar erlang-font-lock-keywords-records
   (list
    (list (concat "#\\s *" erlang-atom-regexp)
-         1 'font-lock-type-face)
+         1 'erl-record-face)
    ;; Don't highlight numerical constants.
    (list (if erlang-regexp-modern-p
 	     "\\_<[0-9]+#\\([0-9a-zA-Z]+\\)"
 	   "\\<[0-9]+#\\([0-9a-zA-Z]+\\)")
          1 nil t)
    (list (concat "^-record\\s-*(\\s-*" erlang-atom-regexp)
-         1 'font-lock-type-face))
+         1 'erl-record-face))
   "Font lock keyword highlighting Erlang records.
 This must be placed in front of `erlang-font-lock-keywords-vars'.")
 
 (defvar erlang-font-lock-keywords-vars
   (list
    (list (concat "[^#]" erlang-variable-regexp)	; no numerical constants
-	 1 'font-lock-variable-name-face))
+	 1 'erl-var-face))
   "Font lock keyword highlighting Erlang variables.
 Must be preceded by `erlang-font-lock-keywords-macros' to work properly.")
 
@@ -1139,48 +1170,58 @@ variable must be set before Erlang mode is activated.
 Example:
     (setq font-lock-maximum-decoration 2)")
 
+;; the keyword regexps has to appear in the correct (this) order for
+;; font locking to work. Regardless of which font lock level one
+;; wants.
+
+(defvar erlang-font-lock-kwords
+  '((1 . erlang-font-lock-keywords-function-header)
+    (1 . erlang-font-lock-keywords-arrow)
+    (1 . erlang-font-lock-keywords-keywords)
+    (2 . erlang-font-lock-keywords-attr)
+    (3 . erlang-font-lock-keywords-macros)
+    (3 . erlang-font-lock-keywords-records)
+    (2 . erlang-font-lock-keywords-ext-bifs)
+    (4 . erlang-font-lock-keywords-ext-function-calls)
+    (2 . erlang-font-lock-keywords-int-bifs)
+    (4 . erlang-font-lock-keywords-int-function-calls)
+    (2 . erlang-font-lock-keywords-guards)
+    (3 . erlang-font-lock-keywords-operators)
+    (3 . erlang-font-lock-keywords-predefined-types)
+    (4 . erlang-font-lock-keywords-fun-n)
+    (1 . erlang-font-lock-keywords-dollar)
+    (1 . erlang-font-lock-keywords-atom)
+    (2 . erlang-font-lock-keywords-quotes)
+    (3 . erlang-font-lock-keywords-vars)
+    (4 . erlang-font-lock-keywords-lc)))
+
+(defun level-filter (n lst)
+  (apply 'append
+   (delq nil
+         (mapcar (lambda (x) (and (<= (car x) n) (eval (cdr x)))) lst))))
+
 (defvar erlang-font-lock-keywords-1
-  (append erlang-font-lock-keywords-function-header
-	  erlang-font-lock-keywords-dollar
-	  erlang-font-lock-keywords-arrow
-	  erlang-font-lock-keywords-keywords
-	  )
+  (level-filter 1 erlang-font-lock-kwords)
   ;; DocStringOrig: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
 (defvar erlang-font-lock-keywords-2
-  (append erlang-font-lock-keywords-1
-	  erlang-font-lock-keywords-int-bifs
-	  erlang-font-lock-keywords-ext-bifs
-	  erlang-font-lock-keywords-attr
-	  erlang-font-lock-keywords-quotes
-	  erlang-font-lock-keywords-guards
-	  )
+  (level-filter 2 erlang-font-lock-kwords)
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
 (defvar erlang-font-lock-keywords-3
-  (append erlang-font-lock-keywords-2
-	  erlang-font-lock-keywords-operators
-	  erlang-font-lock-keywords-macros
-	  erlang-font-lock-keywords-records
-	  erlang-font-lock-keywords-vars
-	  erlang-font-lock-keywords-predefined-types
-	  )
+  (level-filter 3 erlang-font-lock-kwords)
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
 (defvar erlang-font-lock-keywords-4
-  (append erlang-font-lock-keywords-3
-          erlang-font-lock-keywords-int-function-calls
-	  erlang-font-lock-keywords-ext-function-calls
-	  erlang-font-lock-keywords-fun-n
-          erlang-font-lock-keywords-lc
-	  )
+  (level-filter 4 erlang-font-lock-kwords)
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
-(defvar erlang-font-lock-keywords erlang-font-lock-keywords-4
+(defvar erlang-font-lock-keywords
+  erlang-font-lock-keywords-4
   ;; DocStringCopy: erlang-font-lock-keywords
   erlang-font-lock-descr-string)
 
@@ -1527,6 +1568,20 @@ Other commands:
              ("\\(\\$\\)\\\\\\\"" 1 "'"))))))
 
 
+;; use syntactic font locking for comments, strings and single-quoted atoms.
+;; we use this function to check which context we're in. and set the
+;; face accordingly
+(setq font-lock-syntactic-face-function
+      'erlang-font-lock-syntactic-face-function)
+
+(defun erlang-font-lock-syntactic-face-function (state)
+  (cond
+   ((not (nth 3 state))   ; comment
+    erl-comment-face)
+   ((= (nth 3 state) 34)  ; double quoted string
+    erl-string-face)
+   ((= (nth 3 state) 39)  ; single quoted "string", i.e. atom
+    erl-atom-face)))
 
 ;; Useful when defining your own keywords.
 (defun erlang-font-lock-set-face (ks &rest faces)

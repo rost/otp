@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 1996-2010. All Rights Reserved.
+ * Copyright Ericsson AB 1996-2011. All Rights Reserved.
  *
  * The contents of this file are subject to the Erlang Public License,
  * Version 1.1, (the "License"); you may not use this file except in
@@ -1023,8 +1023,6 @@ static BeamInstr* call_error_handler(Process* p, BeamInstr* ip,
 static BeamInstr* fixed_apply(Process* p, Eterm* reg, Uint arity) NOINLINE;
 static BeamInstr* apply(Process* p, Eterm module, Eterm function,
 			Eterm args, Eterm* reg) NOINLINE;
-static int hibernate(Process* c_p, Eterm module, Eterm function,
-		     Eterm args, Eterm* reg) NOINLINE;
 static BeamInstr* call_fun(Process* p, int arity,
 			   Eterm* reg, Eterm args) NOINLINE;
 static BeamInstr* apply_fun(Process* p, Eterm fun,
@@ -1220,6 +1218,9 @@ void process_main(void)
  do_schedule1:
     PROCESS_MAIN_CHK_LOCKS(c_p);
     ERTS_SMP_UNREQ_PROC_MAIN_LOCK(c_p);
+#if HALFWORD_HEAP
+    ASSERT(erts_get_scheduler_data()->num_tmp_heap_used == 0);
+#endif
     ERTS_VERIFY_UNUSED_TEMP_ALLOC(c_p);
     c_p = schedule(c_p, reds_used);
     ERTS_VERIFY_UNUSED_TEMP_ALLOC(c_p);
@@ -3412,12 +3413,17 @@ void process_main(void)
 		r(0) = nif_bif_result;
 		CHECK_TERM(r(0));
 		SET_I(c_p->cp);
+		c_p->cp = 0;
 		Goto(*I);
 	    } else if (c_p->freason == TRAP) {
 		SET_I(*((BeamInstr **) (UWord) ((c_p)->def_arg_reg + 3)));
 		r(0) = c_p->def_arg_reg[0];
 		x(1) = c_p->def_arg_reg[1];
 		x(2) = c_p->def_arg_reg[2];
+		if (c_p->flags & F_HIBERNATE_SCHED) {
+		    c_p->flags &= ~F_HIBERNATE_SCHED;
+		    goto do_schedule;
+		}
 		Dispatch();
 	    }
 	    reg[0] = r(0);
@@ -5219,7 +5225,8 @@ void process_main(void)
 
  OpCase(i_hibernate): {
      SWAPOUT;
-     if (hibernate(c_p, r(0), x(1), x(2), reg)) {
+     if (erts_hibernate(c_p, r(0), x(1), x(2), reg)) {
+	 c_p->flags &= ~F_HIBERNATE_SCHED;
 	 goto do_schedule;
      } else {
 	 I = handle_error(c_p, I, reg, hibernate_3);
@@ -6196,8 +6203,8 @@ fixed_apply(Process* p, Eterm* reg, Uint arity)
     return ep->address;
 }
 
-static int
-hibernate(Process* c_p, Eterm module, Eterm function, Eterm args, Eterm* reg)
+int
+erts_hibernate(Process* c_p, Eterm module, Eterm function, Eterm args, Eterm* reg)
 {
     int arity;
     Eterm tmp;
@@ -6272,15 +6279,17 @@ hibernate(Process* c_p, Eterm module, Eterm function, Eterm args, Eterm* reg)
 	PROCESS_MAIN_CHK_LOCKS(c_p);
 	erts_smp_proc_lock(c_p, ERTS_PROC_LOCK_MSGQ|ERTS_PROC_LOCK_STATUS);
 	ASSERT(!ERTS_PROC_IS_EXITING(c_p));
-	c_p->status = P_WAITING;
 #ifdef ERTS_SMP
 	ERTS_SMP_MSGQ_MV_INQ2PRIVQ(c_p);
 	if (c_p->msg.len > 0)
 	    erts_add_to_runq(c_p);
+	else
 #endif
+	    c_p->status = P_WAITING;
     }
     erts_smp_proc_unlock(c_p, ERTS_PROC_LOCK_MSGQ|ERTS_PROC_LOCK_STATUS);
     c_p->current = bif_export[BIF_hibernate_3]->code;
+    c_p->flags |= F_HIBERNATE_SCHED; /* Needed also when woken! */
     return 1;
 }
 
@@ -6395,6 +6404,7 @@ call_fun(Process* p,		/* Current process. */
 		reg[0] = module;
 		reg[1] = fun;
 		reg[2] = args;
+		reg[3] = NIL;
 		return ep->address;
 	    }
 	}

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2010. All Rights Reserved.
+%% Copyright Ericsson AB 2010-2011. All Rights Reserved.
 %%
 %% The contents of this file are subject to the Erlang Public License,
 %% Version 1.1, (the "License"); you may not use this file except in
@@ -112,7 +112,7 @@ pre_init_per_suite(_Suite,Config,State) ->
     catch Error:Reason ->
 	    Stack = erlang:get_stacktrace(),
 	    ct:pal("~p failed! ~p:{~p,~p}",[?MODULE,Error,Reason,Stack]),
-	    {fail,{?MODULE,{Error,Reason, Stack}}}
+	    {{fail,{?MODULE,{Error,Reason, Stack}}},State}
     end.
 
 %% @doc Called after init_per_suite.
